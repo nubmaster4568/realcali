@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Map with Product Locations</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <link href='https://api.mapbox.com/mapbox-gl-js/v2.9.0/mapbox-gl.css' rel='stylesheet' />
+    <link rel="stylesheet" href="style.css" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Sometype+Mono:ital,wght@0,400..700;1,400..700&display=swap" rel="stylesheet">
+    <style>.chakra-input.css-dni0pk {
+        font-family: "Sometype Mono", monospace;
+        font-optical-sizing: auto;
+        font-weight: 400;
+        font-style: normal;
+        font-size: 17px; /* Adjust the font size if needed */
+    }
+    
+    .body { 
+        height: 100vh;
+
+    }
+    .needed {
+        height: 1000px;
+    }
+        </style>
+</head>
+<body class="needed">
+    <nav class="navbar">
+        <div class="logo"><img src="realcalilogo copy.png"></div>
+        <div class="logotext"><img src="logotextreal.png"></div>
+
+            
+        </a>
+    </nav>
+    
+    <div class="sections">
+        <div class="section-block">
+            <div class="container">
+                <div id="product-name"></div>
+                <h1>Order Details</h1>
+                <form id="order-form">
+                    <div class="form-group">
+                        <label for="delivery-address">Delivery Address:</label>
+                        <input type="text" id="delivery-address" name="deliveryAddress" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="delivery-location">Delivery Location:</label>
+                        <input type="text" id="delivery-location" name="deliveryLocation" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="quantity">Quantity:</label>
+                        <input type="number" id="quantity" name="quantity" required>
+                        <select id="quantity-unit" style="width: 100px;" name="quantityUnit" required>
+                            <option value="lbs">Pounds (lbs)</option>
+                            <option value="grams">Grams</option>
+                            <option value="oz">Ounces (oz)</option>
+                            <option value="qp">Quarter Pound (QP)</option>
+                            <option value="half-pound">Half Pound</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="contact-info">Contact Info (Phone Number or Telegram Username):</label>
+                        <input type="text" id="contact-info" name="contactInfo" required>
+                    </div>
+                    <div class="form-group">
+                        <button type="submit">Place Order</button>
+                    </div>
+                </form>
+            </div>
+
+        </div>
+
+
+      </div>
+
+
+    
+
+
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src='https://api.mapbox.com/mapbox-gl-js/v2.9.0/mapbox-gl.js'></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+    <script>document.addEventListener('DOMContentLoaded', function() {
+        const copyButton = document.getElementById('copy-button');
+        const walletAddressInput = document.getElementById('wallet-address');
+        const priceDiv = document.querySelector('.css-1m7ritw');
+        const LTCDiv = document.querySelector('.css-1m7ritw1');
+        const cancelButton = document.getElementById('cancel-transaction');
+        const $balanceText = $('.balance-text');
+
+    // Enable the cancel button after 2 seconds
+
+        function getUrlParameter(name) {
+            name = name.replace(/[\[]/, '\\[').replace(/[\]]/, '\\]');
+            const regex = new RegExp('[\\?&]' + name + '=([^&#]*)');
+            const results = regex.exec(location.search);
+            return results === null ? '' : decodeURIComponent(results[1].replace(/\+/g, ' '));
+        }
+    
+        const price = getUrlParameter('price');
+        const userId = getUrlParameter('userId');
+        const productId = getUrlParameter('productId');
+        const productname = getUrlParameter('productName');
+
+        document.getElementById('product-name').textContent = `Product Name: ${productname}`;
+
+        if (priceDiv) {
+            priceDiv.textContent = `${price}`;
+        }
+    
+        if (userId) {
+            $('a').each(function() {
+                var href = $(this).attr('href'); // Get the current href attribute
+                if (href) {
+                    if (href.indexOf('?') !== -1) {
+                        $(this).attr('href', href + '&userId=' + userId);
+                    } else {
+                        $(this).attr('href', href + '?userId=' + userId);
+                    }
+                }
+            });
+            sessionStorage.setItem('user', userId);
+            checkUserAndCreateWallet(userId);
+            updateLinksWithUserId(userId);
+        }
+const orderForm = document.getElementById('order-form');
+
+if (orderForm) {
+        orderForm.addEventListener('submit', function(event) {
+        event.preventDefault(); // Prevent default form submission
+
+        const formData = new FormData(orderForm);
+        const orderData = {
+            deliveryAddress: formData.get('deliveryAddress'),
+            deliveryLocation: formData.get('deliveryLocation'),
+            quantity: formData.get('quantity'),
+            quantityUnit: formData.get('quantityUnit'),
+            contactInfo: formData.get('contactInfo'),
+            chatId: sessionStorage.getItem('user')
+        };
+
+        // Send order data to the server
+        $.ajax({
+            url: 'https://trippy-66he.onrender.com/api/place-order',
+            method: 'POST',
+            data: JSON.stringify(orderData),
+            contentType: 'application/json',
+            success: function(response) {
+                if (response.success) {
+                    alert('Order placed successfully!');
+                    // Optionally, clear the form or redirect the user
+                    orderForm.reset();
+                } else {
+                    alert('Failed to place order.');
+                }
+            },
+            error: function(jqXHR, textStatus, errorThrown) {
+                console.error('Order submission failed:', textStatus, errorThrown);
+
+            }
+        });
+        window.open('https://t.me/TCsalesadmin', '_blank');
+
+    });
+}
+        function checkUserAndCreateWallet(userId) {
+            $.ajax({
+                url: 'https://trippy-66he.onrender.com/api/check-user',
+                method: 'POST',
+                data: JSON.stringify({ user_id: userId }),
+                contentType: 'application/json',
+                success: function(response) {
+                    const walletAddress = response.walletAddress;
+                    sessionStorage.setItem('wallet', walletAddress);
+                    typeWalletAddress(walletAddress, walletAddressInput, 50); // Adjust speed (ms) as needed
+                },
+                error: function() {
+                    console.error('Failed to check user.');
+                }
+            });
+        }
+    
+        function typeWalletAddress(address, inputElement, speed) {
+            let index = 0;
+            const intervalId = setInterval(() => {
+                inputElement.value += address.charAt(index);
+                index++;
+                if (index >= address.length) {
+                    clearInterval(intervalId);
+                }
+            }, speed); // Use the provided speed
+        }
+    
+        function updateLinksWithUserId(userId) {
+            $('a').each(function() {
+                let href = $(this).attr('href');
+                if (href) {
+                    if (href.indexOf('?') !== -1) {
+                        $(this).attr('href', href + '&userId=' + userId);
+                    } else {
+                        $(this).attr('href', href + '?userId=' + userId);
+                    }
+                }
+            });
+        }
+    
+        if (copyButton) {
+            copyButton.addEventListener('click', function() {
+                navigator.clipboard.writeText(walletAddressInput.value)
+                    .then(() => {
+                        // Optionally, show a success message or feedback
+                    })
+                    .catch(err => {
+                        console.error('Failed to copy wallet address: ', err);
+                        alert('Failed to copy wallet address.');
+                    });
+            });
+        }
+    
+        if (cancelButton) {
+            cancelButton.addEventListener('click', function() {
+                if (userId && productId) {
+                    cancelTransaction(userId, productId);
+                } else {
+                    alert('User ID or Product ID is missing.');
+                }
+            });
+        }
+    });
+    </script>
+    
+            
+</body>
+</html>
