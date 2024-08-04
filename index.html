@@ -201,7 +201,7 @@
                 if (userId) {
             // Check for active transactions
             $.ajax({
-    url: 'https://trippy-66he.onrender.com/api/checkActiveTransactions', // Endpoint to check active transactions
+    url: 'https://realcali.onrender.com/api/checkActiveTransactions', // Endpoint to check active transactions
     method: 'GET', // Ensure method matches the endpoint
     data: { userId: userId }, // Send userId as query parameter
     success: function(response) {
@@ -229,7 +229,7 @@
     }
             });
             $.ajax({
-            url: 'https://trippy-66he.onrender.com/api/getBalance', // Endpoint to fetch balance
+            url: 'https://realcali.onrender.com/api/getBalance', // Endpoint to fetch balance
             method: 'GET',
             data: { userId: userId },
             success: function(response) {
@@ -257,7 +257,7 @@
             // Fetch and update cities
             async function fetchCategories() {
                 try {
-                    const response = await fetch('https://trippy-66he.onrender.com/api/categories');
+                    const response = await fetch('https://realcali.onrender.com/api/categories');
                     if (!response.ok) {
                         throw new Error(`HTTP error! status: ${response.status}`);
                     }
@@ -271,7 +271,7 @@
             // Fetch and update locations based on cityId
             async function fetchLocations(cityId) {
                 try {
-                    const response = await fetch(`https://trippy-66he.onrender.com/api/locations?cityId=${cityId}`);
+                    const response = await fetch(`https://realcali.onrender.com/api/locations?cityId=${cityId}`);
                     if (!response.ok) {
                         throw new Error(`HTTP error! status: ${response.status}`);
                     }
@@ -434,7 +434,7 @@
 // Fetch and display products based on selected location and type
 function fetchProducts(categorie) {
     $.ajax({
-        url: 'https://trippy-66he.onrender.com/api/products',
+        url: 'https://realcali.onrender.com/api/products',
         type: 'GET',
         data: { categorie },
         success: function(response) {
