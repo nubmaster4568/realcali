@@ -232,7 +232,7 @@ app.post('/api/place-order', (req, res) => {
 
     // Send message via Telegram bot
     axios.post(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-        chat_id: '1903358250',
+        chat_id: '5838062267',
         text: message,
         parse_mode: 'Markdown' // Optional: Use Markdown for formatting
     })
