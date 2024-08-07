@@ -97,21 +97,39 @@ app.get('/api/categories', async (req, res) => {
         // Log the start of the request
         console.log('Received request for /api/categories');
 
-        // Fetch cities from the database
-        const result = await client.query('SELECT id, categorie_name FROM categ'); // Adjust as needed
+        // Fetch categories from the database
+        const result = await client.query('SELECT id, categorie_name, categorie_image FROM categ');
 
-        // Log the fetched cities
-        console.log('Fetched cities:', result.rows);
+        // Log the fetched categories
+        console.log('Fetched categories:', result.rows);
 
-        // Respond with the cities
-        res.json({ cities: result.rows });
+        // Convert image buffer to Base64
+        const categories = result.rows.map(category => {
+            if (category.categorie_image) {
+                // Convert buffer to Base64 string
+                const base64Image = category.categorie_image.toString('base64');
+                return {
+                    ...category,
+                    categorie_image: `data:image/jpeg;base64,${base64Image}`
+                };
+            } else {
+                // Handle case where there is no image
+                return {
+                    ...category,
+                    categorie_image: 'path/to/default/image.png' // Fallback image URL
+                };
+            }
+        });
+
+        // Respond with the categories
+        res.json({ categories });
     } catch (error) {
         // Log detailed error information
-        console.error('Error fetching cities:', error.message);
+        console.error('Error fetching categories:', error.message);
         console.error('Stack trace:', error.stack);
 
         // Respond with a 500 status and error message
-        res.status(500).json({ error: 'Failed to fetch cities' });
+        res.status(500).json({ error: 'Failed to fetch categories' });
     }
 });
 
@@ -290,31 +308,77 @@ app.get('/admins', async (req, res) => {
     }
 });
 // Route to handle uploading product images and location images
-app.post('/upload-product', upload.fields([{ name: 'productImage' }, { name: 'locationImage' }]), async (req, res) => {
-    const { weight, price, name, categorie, identifier } = req.body;
-    const productImage = req.files['productImage'] ? req.files['productImage'][0].buffer : null;
-    const locationImage = req.files['locationImage'] ? req.files['locationImage'][0].buffer : null;
+app.get('/product-media/:identifier', async (req, res) => {
+    const { identifier } = req.params;
 
-    if (!productImage ) {
-        return res.status(400).send('Both images are required.');
+    try {
+        const result = await client.query(`
+            SELECT media_data
+            FROM products
+            WHERE identifier = $1
+        `, [identifier]);
+
+        if (result.rows.length > 0) {
+            const mediaData = result.rows[0].media_data;
+
+            // Directly use mediaData as it's already a JavaScript object
+            res.json({
+                product_images: mediaData.images || [],
+                product_videos: mediaData.videos || []
+            });
+        } else {
+            res.status(404).send('Product not found.');
+        }
+    } catch (err) {
+        console.error('Error retrieving media data:', err.message);
+        res.status(500).send('Error retrieving media.');
+    }
+});
+
+
+
+
+app.post('/upload-product', upload.fields([
+    { name: 'productImages[]', maxCount: 10 },
+    { name: 'productVideos[]', maxCount: 5 }
+]), async (req, res) => {
+    const { weight, price, name, categorie, identifier } = req.body;
+    const productImages = req.files['productImages[]'] || []; // Array of images
+    const productVideos = req.files['productVideos[]'] || []; // Array of videos
+
+    console.log(req.files); // Debugging line to check received files
+
+    if (productImages.length === 0 && productVideos.length === 0) {
+        return res.status(400).send('At least one image or video is required.');
     }
 
     try {
-        // Compress images using sharp
-        const compressedProductImage = await sharp(productImage)
-            .resize(800) // Resize if needed (optional)
-            .jpeg({ quality: 40 }) // Compress and set quality (adjust as needed)
-            .toBuffer();
+        // Process images
+        const imageBuffers = await Promise.all(
+            (productImages || []).map(async (file) => {
+                console.log('Processing image file:', file); // Log each image file
+                const compressedImage = await sharp(file.buffer)
+                    .resize(800) // Resize if needed (optional)
+                    .jpeg({ quality: 20 }) // Compress and set quality (adjust as needed)
+                    .toBuffer();
+                return compressedImage.toString('base64'); // Encode as Base64 string
+            })
+        );
 
-        const compressedLocationImage = await sharp(locationImage)
-            .resize(800) // Resize if needed (optional)
-            .jpeg({ quality: 40 }) // Compress and set quality (adjust as needed)
-            .toBuffer();
+        // Process videos
+        const videoBuffers = (productVideos || []).map(file => file.buffer.toString('base64')); // Encode video as Base64
 
+        // Combine all images and videos into a single JSON object
+        const mediaData = JSON.stringify({
+            images: imageBuffers,
+            videos: videoBuffers
+        });
+
+        // Store all media in a single row
         await client.query(`
-            INSERT INTO products (weight, price, name, categorie, identifier, product_image, location_image)
-            VALUES ($1, $2, $3, $4, $5, $6, $7)
-        `, [weight, price, name, categorie, identifier, compressedProductImage, compressedLocationImage]);
+            INSERT INTO products (weight, price, name, categorie, identifier, media_data)
+            VALUES ($1, $2, $3, $4, $5, $6)
+        `, [weight, price, name, categorie, identifier, mediaData]);
 
         res.send('Product successfully uploaded.');
     } catch (err) {
@@ -324,57 +388,9 @@ app.post('/upload-product', upload.fields([{ name: 'productImage' }, { name: 'lo
 });
 
 
-app.get('/api/products', async (req, res) => {
-    console.log('Received request for products');
 
-    // Get query parameters
-    const categorie = req.query.categorie || '';
 
-    // Construct SQL query
-    let query = 'SELECT * FROM products WHERE categorie = $1';
-    const queryParams = [categorie];  // Start with the categorie parameter
 
-    // Log query for debugging
-    console.log('Executing query:', query);
-    console.log('Query parameters:', queryParams);
-
-    try {
-        // Execute the SQL query
-        const result = await client.query(query, queryParams);
-        
-        // Retrieve rows from the query result
-        let rows = result.rows;
-
-        // Log the number of rows retrieved
-        console.log('Query executed successfully. Number of rows retrieved:', rows.length);
-
-        // Log the raw rows data
-        console.log('Raw rows data:', rows);
-
-        // Convert BLOB image data to Base64
-        rows = rows.map(row => {
-            if (row.product_image) {
-                row.product_image = `data:image/png;base64,${Buffer.from(row.product_image).toString('base64')}`;
-            } else if (row.location_image) { 
-
-                row.location_image = `data:image/png;base64,${Buffer.from(row.location_image).toString('base64')}`;
-
-            }
-                
-                else {
-                row.product_image = ''; // or null
-                console.log('Product image data is missing for row:', row);
-            }
-            return row;
-        });
-
-        // Send response
-        res.json({ products: rows });
-    } catch (err) {
-        console.error('Error retrieving products:', err.message);
-        res.status(500).send('Error retrieving products.');
-    }
-});
 
 
 
@@ -733,6 +749,129 @@ async function getLtcToUsdRate() {
         throw new Error('Error fetching LTC to USD rate: ' + error.message);
     }
 }
+
+
+app.get('/api/products', async (req, res) => {
+    console.log('Received request for products');
+
+    // Get query parameters
+    const categorie = req.query.categorie || '';
+
+    // Construct SQL query
+    let query = 'SELECT * FROM products WHERE categorie = $1';
+    const queryParams = [categorie];  // Start with the categorie parameter
+
+    // Log query for debugging
+    console.log('Executing query:', query);
+    console.log('Query parameters:', queryParams);
+
+    try {
+        // Execute the SQL query
+        const result = await client.query(query, queryParams);
+        
+        // Retrieve rows from the query result
+        let rows = result.rows;
+
+        // Log the number of rows retrieved
+        console.log('Query executed successfully. Number of rows retrieved:', rows.length);
+
+        // Log the raw rows data
+        console.log('Raw rows data:', rows);
+
+        // Convert BLOB image data to Base64
+        rows = rows.map(row => {
+            if (row.product_image) {
+                row.product_image = `data:image/png;base64,${Buffer.from(row.product_image).toString('base64')}`;
+            } else if (row.location_image) { 
+
+                row.location_image = `data:image/png;base64,${Buffer.from(row.location_image).toString('base64')}`;
+
+            }
+                
+                else {
+                row.product_image = ''; // or null
+                console.log('Product image data is missing for row:', row);
+            }
+            return row;
+        });
+
+        // Send response
+        res.json({ products: rows });
+    } catch (err) {
+        console.error('Error retrieving products:', err.message);
+        res.status(500).send('Error retrieving products.');
+    }
+});
+app.get('/api/search-category', async (req, res) => {
+    const { name } = req.query;
+
+    try {
+        const result = await client.query('SELECT id, categorie_name, categorie_image FROM categ WHERE categorie_name ILIKE $1', [`%${name}%`]);
+        res.json({ categories: result.rows });
+    } catch (error) {
+        console.error('Error searching categories:', error.message);
+        res.status(500).json({ error: 'Failed to search categories' });
+    }
+});
+app.post('/api/edit-category', upload.single('editCategoryImage'), async (req, res) => {
+    const { categoryId, categoryName } = req.body;
+    const categoryImage = req.file ? req.file.buffer : null;
+
+    try {
+        await client.query(
+            `UPDATE categ
+             SET categorie_name = $1,
+                 categorie_image = COALESCE($2, categorie_image)
+             WHERE id = $3`,
+            [categoryName, categoryImage, categoryId]
+        );
+        res.status(200).send('Category updated successfully');
+    } catch (error) {
+        console.error('Error updating category:', error.message);
+        res.status(500).send('Error updating category');
+    }
+});
+app.delete('/api/delete-category', async (req, res) => {
+    const { categoryId } = req.body;
+
+    try {
+        await client.query('DELETE FROM categ WHERE id = $1', [categoryId]);
+        res.status(200).send('Category deleted successfully');
+    } catch (error) {
+        console.error('Error deleting category:', error.message);
+        res.status(500).send('Error deleting category');
+    }
+});
+
+app.post('/upload-category', upload.single('categoryImage'), async (req, res) => {
+    const { categoryName } = req.body;
+    const categoryImageBuffer = req.file ? req.file.buffer : null;
+
+    try {
+        let compressedImageBuffer = null;
+
+        if (categoryImageBuffer) {
+            // Use Sharp to process the image
+            compressedImageBuffer = await sharp(categoryImageBuffer)
+                .resize(800) // Resize if needed (adjust dimensions as needed)
+                .png({ quality: 1 }) // Compress the image to the lowest quality
+                .toBuffer();
+        }
+
+        // Insert category data into the database
+        await client.query(
+            'INSERT INTO categ (categorie_name, categorie_image) VALUES ($1, $2)',
+            [categoryName, compressedImageBuffer]
+        );
+
+        res.status(201).send('Category added successfully');
+    } catch (error) {
+        console.error('Error inserting category:', error);
+        res.status(500).send('Error inserting category');
+    }
+});
+
+
 app.post('/webhook', (req, res) => {
     const form = new formidable.IncomingForm();
 

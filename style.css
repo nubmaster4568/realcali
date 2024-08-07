@@ -1291,7 +1291,6 @@ body {
 
 
 
-/* Modal background */
 .modal {
     display: none; /* Hidden by default */
     position: fixed; /* Stay in place */
@@ -1300,9 +1299,7 @@ body {
     top: 0;
     width: 100%; /* Full width */
     height: 100%; /* Full height */
-    overflow-y: scroll;
-    overflow-x: hidden; /* Disable scroll */
-    /* Disable scroll */
+    overflow: hidden; /* Hide scrollbars */
     background-color: rgba(0, 0, 0, 0.5); /* Black background with opacity */
 }
 
@@ -1310,21 +1307,19 @@ body {
 .modal-content {
     color: #232323;
     position: absolute;
-    overflow: hidden;
     left: 50%;
-    top: 60%;
+    top: 50%;
     transform: translate(-50%, -50%);
-    width: 100%;
-    max-width: 100%;
-    height: 100%;
+    width: 90%; /* Adjusted width for better responsiveness */
+    max-width: 1000px; /* Maximum width for large screens */
     background-color: #fff9eb;
     border-radius: 10px;
     box-shadow: inset 20px 20px 30px rgb(115 61 30 / 23%), 0 4px 8px rgba(0, 0, 0, 0.2);
     animation: slideUp 0.5s;
     padding: 20px;
     box-sizing: border-box;
+    overflow: hidden; /* Prevent content overflow */
 }
-
 
 /* Close button */
 .close-modal {
@@ -1344,13 +1339,13 @@ body {
 }
 
 /* Slick Slider styles */
-.slick-slide img {
+.slick-slide img, .slick-slide video {
     width: 100%;
     height: auto;
     border-radius: 10px;
 }
 
-/* Modal name and description */
+/* Modal title and description */
 .modal-title {
     font-size: 24px;
     margin: 20px 0 10px;
@@ -1361,6 +1356,7 @@ body {
     margin: 10px 0;
 }
 
+/* Modal price */
 .modal-price {
     display: flex;
     font-weight: 700;
@@ -1401,6 +1397,7 @@ body {
     pointer-events: none; /* Prevent interactions with background elements */
 }
 
+/* Slick slider navigation */
 .slick-prev, .slick-next {
     font-size: 0 !important;
     line-height: 0 !important;
@@ -1408,9 +1405,8 @@ body {
     top: 50% !important;
     display: block !important;
     width: 40px !important;
+    height: 40px !important; /* Added height for better touch targets */
     padding: 0 !important;
-    -webkit-transform: translate(0, -50%) !important;
-    -ms-transform: translate(0, -50%) !important;
     transform: translate(0, -50%) !important;
     cursor: pointer !important;
     color: transparent !important;
@@ -1418,6 +1414,12 @@ body {
     outline: none !important;
     background: transparent !important;
 }
+
+/* Slick slider dots */
+.slick-dots {
+    bottom: 10px; /* Adjust position of dots */
+}
+
 
 
 .form-group {
