@@ -22,7 +22,7 @@
     <script>
         async function fetchProductMedia() {
             try {
-                const response = await fetch('http://localhost:3000/product-media/WKSLTBuaRi'); // Adjust endpoint as needed
+                const response = await fetch('https://realcali.onrender.com/product-media/WKSLTBuaRi'); // Adjust endpoint as needed
                 const data = await response.json();
                 
                 if (Array.isArray(data.product_images) || Array.isArray(data.product_videos)) {
